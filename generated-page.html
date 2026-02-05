@@ -1,0 +1,876 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abwebcraft | Future of Digital Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f7;
+            overflow-x: hidden;
+        }
+
+        /* Hide scrollbar */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+
+        /* -------------------------------------------
+           TEXT REVEAL ANIMATIONS
+           ------------------------------------------- */
+        .reveal-text-container {
+            overflow: hidden;
+            /* Clips the text coming from below */
+            display: inline-flex;
+            vertical-align: bottom;
+        }
+
+        .reveal-word {
+            transform: translateY(110%);
+            opacity: 0;
+            animation: text-slide-up 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            display: inline-block;
+        }
+
+        @keyframes text-slide-up {
+            0% {
+                transform: translateY(110%);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* -------------------------------------------
+           3D CARD PERSPECTIVE & ENTRANCE
+           ------------------------------------------- */
+        .cards-stage {
+            perspective: 2000px;
+            /* Deep perspective for the 3D effect */
+            overflow: visible;
+            width: 100%;
+        }
+
+        .cards-layer {
+            transform-style: preserve-3d;
+            opacity: 0;
+            /* Entrance sequence: Come up -> then Lay Sideways */
+            animation: cards-enter-layout 2.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+            animation-delay: 0.5s;
+            transform-origin: 50% 20%;
+            will-change: transform, opacity;
+        }
+
+        @keyframes cards-enter-layout {
+            0% {
+                opacity: 0;
+                /* Start lower and flat */
+                transform: translateY(150px) rotateX(0deg) rotateZ(0deg) scale(0.95);
+            }
+
+            40% {
+                opacity: 1;
+                /* Arrive at center, still mostly flat */
+                transform: translateY(0px) rotateX(0deg) rotateZ(0deg) scale(1);
+            }
+
+            100% {
+                opacity: 1;
+                /* Final State: Tilted back and angled (Sideways layout) */
+                transform: translateY(20px) rotateX(20deg) rotateZ(-2deg) scale(1);
+            }
+        }
+
+        /* -------------------------------------------
+           MARQUEE ANIMATION
+           ------------------------------------------- */
+        .marquee-track {
+            display: flex;
+            gap: 2.5rem;
+            width: max-content;
+            /* Moving continuously */
+            animation: marquee-move 80s linear infinite;
+        }
+
+        .marquee-track:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes marquee-move {
+            0% {
+                transform: translateX(-50%);
+            }
+
+            100% {
+                transform: translateX(0%);
+            }
+        }
+
+        /* -------------------------------------------
+           UTILITIES
+           ------------------------------------------- */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        ::selection {
+            background: #ccf381;
+            color: black;
+        }
+
+        /* -------------------------------------------
+           SCROLL REVEAL UTILITIES
+           ------------------------------------------- */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* -------------------------------------------
+           ZOOM REVEAL (Process Section)
+           ------------------------------------------- */
+        .reveal-zoom {
+            opacity: 0;
+            transform: scale(0.9) translateY(40px);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, opacity;
+        }
+
+        .reveal-zoom.is-visible {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        .reveal-delay-100 {
+            transition-delay: 0.1s;
+        }
+
+        .reveal-delay-200 {
+            transition-delay: 0.2s;
+        }
+
+        .reveal-delay-300 {
+            transition-delay: 0.3s;
+        }
+
+        .reveal-delay-400 {
+            transition-delay: 0.4s;
+        }
+
+        .reveal-delay-500 {
+            transition-delay: 0.5s;
+        }
+    </style>
+</head>
+
+<body class="antialiased text-slate-900 selection:bg-[#ccf381]">
+
+    <!-- Interactive Background -->
+    <div id="canvas-container">
+        <canvas id="dotsCanvas"></canvas>
+    </div>
+
+    <!-- Navigation -->
+    <div class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-6 px-4">
+        <!-- Added subtle fade-in for nav -->
+        <nav
+            class="flex items-center justify-between w-full max-w-3xl px-2 py-2 pl-6 bg-[#1a1a1a]/95 backdrop-blur-xl rounded-full shadow-2xl ring-1 ring-white/10 opacity-0 animate-[fadeInDown_1s_ease-out_0.2s_forwards]">
+            <div class="flex items-center gap-3 transition-colors cursor-pointer group text-gray-400 hover:text-white">
+                <i data-lucide="menu" class="w-5 h-5 transition-colors"></i>
+                <span class="text-xs font-medium uppercase tracking-wide transition-colors">Menu</span>
+            </div>
+
+            <div
+                class="absolute text-lg font-semibold tracking-tight text-white transform -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2">
+                abwebcraft
+            </div>
+
+            <a href="#"
+                class="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-black transition-all transform rounded-full bg-[#ccf381] hover:bg-[#b2e660] hover:scale-105">
+                Start Project
+            </a>
+        </nav>
+    </div>
+
+    <!-- Green Ticker Tape (Delays entrance to not distract) -->
+    <div
+        class="absolute top-24 left-0 w-full z-40 -rotate-1 origin-center opacity-0 animate-[fadeIn_1s_ease_1.5s_forwards] pointer-events-none mix-blend-multiply">
+        <div class="bg-[#ccf381] border-y border-black/5 py-1.5 overflow-hidden flex">
+            <div
+                class="flex gap-4 uppercase text-[10px] font-bold tracking-widest text-black whitespace-nowrap animate-[marquee_30s_linear_infinite]">
+                ✦ Available for new projects ✦ Professional Web Design ✦ Business Strategy ✦ Websites That Sell ✦
+                Available for new projects ✦ Professional Web Design ✦ Business Strategy ✦ Websites That Sell
+            </div>
+            <div class="flex gap-4 uppercase text-[10px] font-bold tracking-widest text-black whitespace-nowrap animate-[marquee_30s_linear_infinite]"
+                aria-hidden="true">
+                ✦ Available for new projects ✦ Professional Web Design ✦ Business Strategy ✦ Websites That Sell ✦
+                Available for new projects ✦ Professional Web Design ✦ Business Strategy ✦ Websites That Sell
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <main class="relative flex flex-col items-center justify-center min-h-screen pt-32 pb-20 overflow-hidden">
+
+        <!-- Main Headline with Staggered Reveal -->
+        <div class="z-10 max-w-6xl px-4 mx-auto text-center space-y-10 mt-8">
+            <h1
+                class="flex flex-wrap justify-center gap-x-3 gap-y-0 text-5xl font-medium tracking-tighter md:text-8xl lg:text-9xl text-slate-900 leading-[0.9]">
+                <!-- "Websites" -->
+                <span class="reveal-text-container">
+                    <span class="reveal-word" style="animation-delay: 0.1s;">Websites</span>
+                </span>
+
+                <!-- "Built" -->
+                <span class="reveal-text-container">
+                    <span class="reveal-word" style="animation-delay: 0.2s;">Built</span>
+                </span>
+
+                <!-- Animated Asterisk -->
+                <span class="reveal-text-container self-center mx-2">
+                    <span class="reveal-word text-[#5b50ff] flex items-center" style="animation-delay: 0.3s;">
+                        <i data-lucide="asterisk"
+                            class="w-10 h-10 md:w-20 md:h-20 stroke-[2.5] animate-[spin_12s_linear_infinite]"></i>
+                    </span>
+                </span>
+
+                <!-- "to" -->
+                <span class="reveal-text-container">
+                    <span class="reveal-word" style="animation-delay: 0.35s;">to</span>
+                </span>
+                <!-- "Grow" -->
+                <span class="reveal-text-container">
+                    <span class="reveal-word" style="animation-delay: 0.4s;">Grow</span>
+                </span>
+                <!-- "Business" -->
+                <span class="reveal-text-container">
+                    <span class="reveal-word" style="animation-delay: 0.5s;">Business</span>
+                </span>
+            </h1>
+
+            <!-- Subtitle -->
+            <div class="max-w-2xl mx-auto mt-8">
+                <p class="text-xl font-normal leading-relaxed text-slate-600 md:text-2xl">
+                    <span class="reveal-text-container">
+                        <span class="reveal-word" style="animation-delay: 0.6s;">We build modern, fast websites</span>
+                    </span>
+                    <!-- Badge 1 -->
+                    <span
+                        class="inline-flex items-center align-middle px-3 py-1 rounded bg-white border border-gray-200 shadow-sm text-slate-800 text-base md:text-lg opacity-0 animate-[fadeInUp_0.8s_ease_0.8s_forwards]">
+                        <i data-lucide="zap" class="w-4 h-4 mr-2 text-yellow-500"></i> Fast
+                    </span>
+                    <span class="reveal-text-container"><span class="reveal-word"
+                            style="animation-delay: 0.7s;">&amp;</span></span>
+                    <!-- Badge 2 -->
+                    <span
+                        class="inline-flex items-center align-middle px-3 py-1 rounded bg-white border border-gray-200 shadow-sm text-slate-800 text-base md:text-lg opacity-0 animate-[fadeInUp_0.8s_ease_0.9s_forwards]">
+                        <span class="w-3 h-3 rounded-full bg-green-400 mr-2"></span> Effective
+                    </span>
+                    <br class="hidden md:block">
+                    <span class="reveal-text-container">
+                        <span class="reveal-word" style="animation-delay: 0.8s;">that help you attract more</span>
+                    </span>
+                    <span class="reveal-text-container">
+                        <span class="reveal-word" style="animation-delay: 0.9s;">customers.</span>
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <!-- 3D Card Showcase (Linear Style) -->
+        <div class="relative w-full mt-24 cards-stage">
+
+            <!-- Side Gradients for fading effect -->
+            <div
+                class="absolute top-0 left-0 z-20 w-1/5 h-full pointer-events-none bg-gradient-to-r from-[#f5f5f7] via-[#f5f5f7]/80 to-transparent">
+            </div>
+            <div
+                class="absolute top-0 right-0 z-20 w-1/5 h-full pointer-events-none bg-gradient-to-l from-[#f5f5f7] via-[#f5f5f7]/80 to-transparent">
+            </div>
+
+            <div class="cards-layer">
+                <div class="marquee-track items-end pb-12 pl-10">
+
+                    <!-- Card Template -->
+                    <!-- Card 1 -->
+                    <div
+                        class="group relative w-[400px] md:w-[500px] flex-shrink-0 aspect-[16/10] bg-[#0d0d0e] rounded-xl border border-white/10 shadow-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+                        <!-- Browser Header -->
+                        <div
+                            class="absolute top-0 z-10 flex items-center justify-between w-full h-10 px-4 border-b border-white/5 bg-white/5 backdrop-blur-md">
+                            <div class="flex space-x-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+                            </div>
+                            <div class="h-1.5 w-20 bg-white/10 rounded-full"></div>
+                        </div>
+                        <!-- Content -->
+                        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&amp;w=1600&amp;auto=format&amp;fit=crop"
+                            class="object-cover w-full h-full opacity-50 group-hover:opacity-80 transition-opacity duration-700"
+                            alt="Dashboard">
+                        <div
+                            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black to-transparent transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                            <h3 class="text-lg font-medium text-white">Fintech Dashboard</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Growth</span>
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Analytics</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div
+                        class="group relative w-[400px] md:w-[500px] flex-shrink-0 aspect-[16/10] bg-[#0d0d0e] rounded-xl border border-white/10 shadow-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+                        <div
+                            class="absolute top-0 z-10 flex items-center justify-between w-full h-10 px-4 border-b border-white/5 bg-white/5 backdrop-blur-md">
+                            <div class="flex space-x-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+                            </div>
+                            <div class="h-1.5 w-20 bg-white/10 rounded-full"></div>
+                        </div>
+                        <img src="https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?q=80&amp;w=1600&amp;auto=format&amp;fit=crop"
+                            class="object-cover w-full h-full opacity-50 group-hover:opacity-80 transition-opacity duration-700"
+                            alt="E-commerce">
+                        <div
+                            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black to-transparent transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                            <h3 class="text-lg font-medium text-white">E-Commerce System</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Sales</span>
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Fast</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div
+                        class="group relative w-[400px] md:w-[500px] flex-shrink-0 aspect-[16/10] bg-[#0d0d0e] rounded-xl border border-white/10 shadow-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+                        <div
+                            class="absolute top-0 z-10 flex items-center justify-between w-full h-10 px-4 border-b border-white/5 bg-white/5 backdrop-blur-md">
+                            <div class="flex space-x-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+                            </div>
+                            <div class="h-1.5 w-20 bg-white/10 rounded-full"></div>
+                        </div>
+                        <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&amp;w=1600&amp;auto=format&amp;fit=crop"
+                            class="object-cover w-full h-full opacity-50 group-hover:opacity-80 transition-opacity duration-700"
+                            alt="AI">
+                        <div
+                            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black to-transparent transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                            <h3 class="text-lg font-medium text-white">AI Interface</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Modern</span>
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Impact</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div
+                        class="group relative w-[400px] md:w-[500px] flex-shrink-0 aspect-[16/10] bg-[#0d0d0e] rounded-xl border border-white/10 shadow-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+                        <div
+                            class="absolute top-0 z-10 flex items-center justify-between w-full h-10 px-4 border-b border-white/5 bg-white/5 backdrop-blur-md">
+                            <div class="flex space-x-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+                            </div>
+                            <div class="h-1.5 w-20 bg-white/10 rounded-full"></div>
+                        </div>
+                        <img src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&amp;w=1600&amp;auto=format&amp;fit=crop"
+                            class="object-cover w-full h-full opacity-50 group-hover:opacity-80 transition-opacity duration-700"
+                            alt="Portfolio">
+                        <div
+                            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black to-transparent transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                            <h3 class="text-lg font-medium text-white">Architect Portfolio</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Clean</span>
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Professional</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Duplicates for Loop -->
+                    <div
+                        class="group relative w-[400px] md:w-[500px] flex-shrink-0 aspect-[16/10] bg-[#0d0d0e] rounded-xl border border-white/10 shadow-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02]">
+                        <div
+                            class="absolute top-0 z-10 flex items-center justify-between w-full h-10 px-4 border-b border-white/5 bg-white/5 backdrop-blur-md">
+                            <div class="flex space-x-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+                            </div>
+                            <div class="h-1.5 w-20 bg-white/10 rounded-full"></div>
+                        </div>
+                        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&amp;w=1600&amp;auto=format&amp;fit=crop"
+                            class="object-cover w-full h-full opacity-50 group-hover:opacity-80 transition-opacity duration-700"
+                            alt="Dashboard">
+                        <div
+                            class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black to-transparent transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                            <h3 class="text-lg font-medium text-white">Fintech Dashboard</h3>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Growth</span>
+                                <span
+                                    class="px-2 py-0.5 rounded-md bg-white/10 text-[10px] text-gray-300 font-medium">Analytics</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==============================================
+         SECTION: REVENUE LOSS (Dark Impact)
+         ============================================== -->
+    <section class="relative py-32 bg-[#0d0d0e] text-white overflow-hidden">
+        <!-- Decoration -->
+        <div
+            class="absolute top-0 right-0 w-[500px] h-[500px] bg-[#ccf381]/5 rounded-full blur-[120px] pointer-events-none">
+        </div>
+
+        <div class="relative max-w-6xl px-4 mx-auto">
+            <div class="grid gap-16 lg:grid-cols-2 lg:items-center">
+
+                <!-- Text Content -->
+                <div class="space-y-8 reveal-on-scroll">
+                    <h2 class="text-4xl font-medium tracking-tighter md:text-6xl text-white/90">
+                        The Cost of <br>
+                        <span class="text-[#ccf381] animate-pulse">A Poor Website.</span>
+                    </h2>
+                    <p class="text-lg leading-relaxed text-gray-400 md:text-xl reveal-delay-100">
+                        In an era where attention is currency, a poor digital presence isn't just an inconvenience—it's
+                        a liability. Businesses with outdated websites lose trust and sales every single day.
+                    </p>
+
+                    <div class="space-y-6 pt-4 reveal-delay-200">
+                        <div class="flex items-start gap-4">
+                            <div class="p-3 rounded-full bg-white/5 border border-white/10 shrink-0">
+                                <i data-lucide="trending-down" class="w-6 h-6 text-[#FF5F56]"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-white">75% Credibility Judgment</h4>
+                                <p class="text-sm text-gray-500">Most customers judge your business credibility based on
+                                    your website design alone.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="p-3 rounded-full bg-white/5 border border-white/10 shrink-0">
+                                <i data-lucide="zap" class="w-6 h-6 text-[#FF5F56]"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-white">0.05 Seconds</h4>
+                                <p class="text-sm text-gray-500">It takes less than a second for a customer to decide if
+                                    they trust you.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Graphic -->
+                <div class="relative reveal-on-scroll reveal-delay-200">
+                    <div
+                        class="absolute -inset-1 rounded-2xl bg-gradient-to-br from-[#ccf381]/20 to-transparent blur-xl">
+                    </div>
+                    <div
+                        class="relative p-8 border bg-white/5 backdrop-blur-sm border-white/10 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="text-center md:text-left space-y-2">
+                            <div class="text-5xl font-bold text-white tracking-tighter counter-animate"
+                                data-target="94">0</div>
+                            <div class="text-sm font-medium uppercase tracking-widest text-gray-500">% First Impressions
+                            </div>
+                            <p class="text-xs text-gray-400">Are design related.</p>
+                        </div>
+                        <div class="text-center md:text-left space-y-2">
+                            <div class="text-5xl font-bold text-white tracking-tighter counter-animate"
+                                data-target="88">0</div>
+                            <div class="text-sm font-medium uppercase tracking-widest text-gray-500">% Less Return</div>
+                            <p class="text-xs text-gray-400">Users who won't return after a bad experience.</p>
+                        </div>
+                        <div class="col-span-1 md:col-span-2 pt-8 border-t border-white/10">
+                            <div class="text-3xl font-bold text-[#ccf381] tracking-tighter counter-animate"
+                                data-target="200">0</div>
+                            <div class="text-sm font-medium uppercase tracking-widest text-gray-500">% Revenue Shift
+                            </div>
+                            <p class="text-xs text-gray-400">Companies with strong design outperform weak ones by over
+                                200%.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==============================================
+         SECTION: OUR PROCESS (The Algorithm)
+         ============================================== -->
+    <section class="relative py-32 bg-[#f5f5f7] overflow-hidden">
+        <!-- Connecting Line (Desktop) -->
+        <div
+            class="hidden lg:block absolute top-[55%] left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-300 to-transparent z-0 opacity-50">
+        </div>
+
+        <div class="max-w-7xl px-4 mx-auto relative z-10">
+            <div class="mb-24 text-center reveal-on-scroll">
+                <span class="text-[#5b50ff] font-semibold tracking-widest uppercase text-sm mb-4 block">How We
+                    Work</span>
+                <h2 class="text-4xl font-medium tracking-tighter md:text-6xl text-slate-900">
+                    Our <span class="italic font-serif text-[#5b50ff]">Process</span>
+                </h2>
+            </div>
+
+            <div class="grid gap-6 md:grid-cols-3 lg:grid-cols-5 relative">
+                <!-- Step 1: Discovery -->
+                <div
+                    class="group relative p-6 pt-12 bg-white rounded-2xl border border-gray-100 shadow-sm transition-all duration-700 hover:scale-[1.02] hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-[#ccf381] reveal-zoom">
+                    <div
+                        class="absolute top-4 right-4 text-4xl font-bold text-slate-100 select-none group-hover:text-[#ccf381] transition-colors duration-500">
+                        01</div>
+                    <div class="relative z-10">
+                        <div
+                            class="w-14 h-14 mb-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 group-hover:scale-110 group-hover:bg-[#ccf381] transition-all duration-500">
+                            <i data-lucide="search" class="w-6 h-6 stroke-[2]"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-3">Discovery</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
+                            We learn about your business, your goals, and your customers to ensure we build exactly what
+                            you need.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 2: Design -->
+                <div
+                    class="group relative p-6 pt-12 bg-white rounded-2xl border border-gray-100 shadow-sm transition-all duration-700 hover:scale-[1.02] hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-[#5b50ff] reveal-zoom reveal-delay-100">
+                    <div
+                        class="absolute top-4 right-4 text-4xl font-bold text-slate-100 select-none group-hover:text-[#5b50ff] transition-colors duration-500">
+                        02</div>
+                    <div class="relative z-10">
+                        <div
+                            class="w-14 h-14 mb-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 group-hover:scale-110 group-hover:bg-[#5b50ff] group-hover:text-white transition-all duration-500">
+                            <i data-lucide="pen-tool" class="w-6 h-6 stroke-[2]"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-3">Design</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
+                            We design a professional, modern website that reflects your brand and impresses your
+                            customers.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 3: Development -->
+                <div
+                    class="group relative p-6 pt-12 bg-white rounded-2xl border border-gray-100 shadow-sm transition-all duration-700 hover:scale-[1.02] hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-black reveal-zoom reveal-delay-200">
+                    <div
+                        class="absolute top-4 right-4 text-4xl font-bold text-slate-100 select-none group-hover:text-black/20 transition-colors duration-500">
+                        03</div>
+                    <div class="relative z-10">
+                        <div
+                            class="w-14 h-14 mb-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 group-hover:scale-110 group-hover:bg-black group-hover:text-white transition-all duration-500">
+                            <i data-lucide="code" class="w-6 h-6 stroke-[2]"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-3">Build</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
+                            We build and optimize your website to work perfectly on computers, tablets, and phones.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 4: Launch -->
+                <div
+                    class="group relative p-6 pt-12 bg-white rounded-2xl border border-gray-100 shadow-sm transition-all duration-700 hover:scale-[1.02] hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-[#ccf381] reveal-zoom reveal-delay-300">
+                    <div
+                        class="absolute top-4 right-4 text-4xl font-bold text-slate-100 select-none group-hover:text-[#ccf381] transition-colors duration-500">
+                        04</div>
+                    <div class="relative z-10">
+                        <div
+                            class="w-14 h-14 mb-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 group-hover:scale-110 group-hover:bg-[#ccf381] transition-all duration-500">
+                            <i data-lucide="rocket" class="w-6 h-6 stroke-[2]"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-3">Launch</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
+                            We test everything, set up your SEO so you can be found on Google, and launch your new site.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step 5: Support -->
+                <div
+                    class="group relative p-6 pt-12 bg-white rounded-2xl border border-gray-100 shadow-sm transition-all duration-700 hover:scale-[1.02] hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-[#ff5f56] reveal-zoom reveal-delay-400">
+                    <div
+                        class="absolute top-4 right-4 text-4xl font-bold text-slate-100 select-none group-hover:text-[#ff5f56]/20 transition-colors duration-500">
+                        05</div>
+                    <div class="relative z-10">
+                        <div
+                            class="w-14 h-14 mb-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-900 group-hover:scale-110 group-hover:bg-[#ff5f56] group-hover:text-white transition-all duration-500">
+                            <i data-lucide="heart-handshake" class="w-6 h-6 stroke-[2]"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-3">Support</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
+                            We don't disappear. We're here to help you update, maintain, and grow your website over
+                            time.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ==============================================
+         SECTION: FOOTER
+         ============================================== -->
+    <footer class="bg-black text-white py-20 border-t border-white/10">
+        <div class="max-w-6xl px-4 mx-auto text-center">
+            <h2
+                class="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
+                Ready to grow?
+            </h2>
+            <p class="text-gray-400 mb-10 max-w-xl mx-auto text-lg">
+                Don't let a bad website hold you back. Let's build a site that grows your business.
+            </p>
+            <a href="#"
+                class="inline-flex items-center gap-3 px-8 py-4 text-sm font-bold uppercase tracking-widest text-black transition-all transform rounded-full bg-[#ccf381] hover:bg-[#b2e660] hover:scale-105 hover:shadow-[0_0_30px_rgba(204,243,129,0.3)]">
+                Start Project <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+
+            <div
+                class="mt-20 pt-10 border-t border-white/10 flex flex-col md:flex-row justify-between items-center text-gray-500 text-sm">
+                <p>&copy; 2026 Abwebcraft Digital. All rights reserved.</p>
+                <div class="flex gap-6 mt-4 md:mt-0">
+                    <a href="#" class="hover:text-white transition-colors">Instagram</a>
+                    <a href="#" class="hover:text-white transition-colors">Twitter</a>
+                    <a href="#" class="hover:text-white transition-colors">LinkedIn</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Keyframes for Tailwind Utilities -->
+    <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 0.9;
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes marquee {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+    </style>
+
+    <script>
+        lucide.createIcons();
+
+        // -----------------------------------------------------
+        // ANTIGRAVITY DOTS ANIMATION (Canvas)
+        // -----------------------------------------------------
+        const canvas = document.getElementById('dotsCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        const gap = 45; // slightly wider gap for cleaner look
+
+        let mouse = { x: -9999, y: -9999 };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.originX = x;
+                this.originY = y;
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.size = 1.2;
+                this.color = '#94a3b8'; // Darker for better visibility
+            }
+
+            update() {
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const forceDist = 300; // Wider range for attraction
+
+                // Return to origin force
+                const homeDx = this.originX - this.x;
+                const homeDy = this.originY - this.y;
+
+                // Mouse interaction - ATTRACTION (Swarm effect)
+                if (dist < forceDist && mouse.x !== -9999) {
+                    const angle = Math.atan2(dy, dx);
+                    const force = (forceDist - dist) / forceDist;
+                    // Pull towards mouse
+                    const moveForce = 2.0;
+                    this.vx += Math.cos(angle) * force * moveForce;
+                    this.vy += Math.sin(angle) * force * moveForce;
+                }
+
+                // Random "Breathing" Motion (Brownian-ish)
+                this.vx += (Math.random() - 0.5) * 0.5;
+                this.vy += (Math.random() - 0.5) * 0.5;
+
+                // Stronger return force to keep them somewhat organized but alive
+                this.vx += homeDx * 0.05;
+                this.vy += homeDy * 0.05;
+
+                this.vx *= 0.90; // friction
+                this.vy *= 0.90;
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let x = 0; x < width; x += gap) {
+                for (let y = 0; y < height; y += gap) {
+                    particles.push(new Particle(x + gap / 2, y + gap / 2));
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+
+        resize();
+        animate();
+
+        // -----------------------------------------------------
+        // INTERSECTION OBSERVER FOR SCROLL ANIMATIONS
+        // -----------------------------------------------------
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: "0px 0px -50px 0px"
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+
+                    // Handle Counter Animations if inside the target
+                    const counters = entry.target.querySelectorAll('.counter-animate');
+                    counters.forEach(counter => {
+                        const target = +counter.getAttribute('data-target');
+                        const speed = 200; // lower is faster
+
+                        const updateCount = () => {
+                            const count = +counter.innerText.replace('%', ''); // simple parse
+                            const inc = target / speed * 2; // speed factor
+
+                            if (count < target) {
+                                counter.innerText = Math.ceil(count + inc) + (counter.innerText.includes('%') ? '%' : ''); // keep % if added manually, but logic here is simple number
+                                setTimeout(updateCount, 15);
+                            } else {
+                                counter.innerText = target + (counter.getAttribute('data-target').includes('.') ? '' : ''); // Force clean end
+                            }
+                        };
+                        updateCount();
+                    });
+
+                    observer.unobserve(entry.target); // Animate once
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal-on-scroll, .reveal-zoom').forEach(el => {
+            observer.observe(el);
+        });
+
+    </script>
+
+</body>
+
+</html>
